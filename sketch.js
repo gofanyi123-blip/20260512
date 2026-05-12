@@ -65,8 +65,8 @@ function drawEarrings(drawX, drawY, drawW, drawH) {
     
     // 取得左右耳垂座標
     // FaceMesh 中 132 與 361 分別是影像中左右臉部輪廓線最靠近耳垂的點，比 177/401 更準確貼合邊緣
-    leftEarlobe = [face.keypoints[132].x, face.keypoints[132].y];
-    rightEarlobe = [face.keypoints[361].x, face.keypoints[361].y];
+    leftEarlobe = [face.keypoints[0].x, face.keypoints[177].y];
+    rightEarlobe = [face.keypoints[0].x, face.keypoints[401].y];
 
     if (leftEarlobe && rightEarlobe) {
       // 計算在畫布上的實際座標（考量到影像已經左右顛倒與 50% 縮放比例）
