@@ -30,6 +30,16 @@ function draw() {
   let drawX = (width - drawW) / 2;
   let drawY = (height - drawH) / 2;
   
+  // 在置中上方加入文字
+  push();
+  fill(0); // 黑色文字
+  noStroke();
+  textAlign(CENTER, CENTER);
+  textSize(28);
+  text("414730498許銘緯", width / 2, drawY / 2 - 20);
+  text("作品為影像辨識_耳環臉譜", width / 2, drawY / 2 + 20);
+  pop();
+
   // 顯示的畫面需要做左右顛倒處理
   push();
   translate(drawX + drawW, drawY);
