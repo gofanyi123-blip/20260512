@@ -1,101 +1,111 @@
-let video;
-let facemesh;
-let predictions = [];
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-function preload() {
-  // 建議將模型載入放在 preload 中，確保模型完全載入後再執行 setup
-  facemesh = ml5.faceMesh({ maxFaces: 1 });
-}
+    <title>Sketch</title>
+    <link rel="icon" href="data:,">
+
+    <link rel="stylesheet" type="text/css" href="style.css">
+
+    <script src="libraries/p5.min.js"></script>
+<script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+  </head>
+
+  <body>
+    <script src="sketch.js"></script>
+  </body>
+</html>
+
+
+
+
+
+
+let video;
+let noCamera = false;
+let errorMsg = '';
+let faceMesh;
+let faces = [];
 
 function setup() {
-  // 第一步驟：產生一個全螢幕的畫布
   createCanvas(windowWidth, windowHeight);
-  
-  // 擷取攝影機影像
-  video = createCapture(VIDEO);
-  video.size(640, 480);
-  video.hide(); // 隱藏原始的 HTML 影片元素
-  
-  // 開始辨識
-  facemesh.detectStart(video, results => {
-    predictions = results;
+
+  // 指定前鏡頭（手機預設可能是後鏡頭）
+  video = createCapture({ video: { facingMode: 'user' } }, onVideoReady);
+  video.elt.addEventListener('error', () => {
+    noCamera = true;
+    errorMsg = '無法開啟攝影機';
+  });
+  video.hide();
+}
+
+function onVideoReady() {
+  // video 準備好之後再初始化 faceMesh
+  faceMesh = ml5.faceMesh({ maxFaces: 1 }, () => {
+    faceMesh.detectStart(video, gotFaces);
   });
 }
 
-function draw() {
-  // 畫布的背景顏色為 e7c6ff
-  background("#e7c6ff");
-  
-  // 顯示的影像寬高為整個畫布寬高的 50%
-  let drawW = width * 0.5;
-  let drawH = height * 0.5;
-  
-  // 擷取的影像產生在畫布的中間
-  let drawX = (width - drawW) / 2;
-  let drawY = (height - drawH) / 2;
-  
-  // 在置中上方加入文字
-  push();
-  fill(0); // 黑色文字
-  noStroke();
-  textAlign(CENTER, CENTER);
-  textSize(28);
-  text("414730498許銘緯", width / 2, drawY / 2 - 20);
-  text("作品為影像辨識_耳環臉譜", width / 2, drawY / 2 + 20);
-  pop();
-
-  // 顯示的畫面需要做左右顛倒處理
-  push();
-  translate(drawX + drawW, drawY);
-  scale(-1, 1);
-  image(video, 0, 0, drawW, drawH);
-  pop();
-  
-  // 辨識耳垂並畫出耳環
-  drawEarrings(drawX, drawY, drawW, drawH);
+function gotFaces(results) {
+  faces = results;
 }
 
-function drawEarrings(drawX, drawY, drawW, drawH) {
-  let vw = video.width || 640;
-  let vh = video.height || 480;
+function draw() {
+  background('#e7c6ff');
 
-  for (let i = 0; i < predictions.length; i += 1) {
-    let face = predictions[i];
-    let leftEarlobe, rightEarlobe;
-    
-    // 取得左右耳垂座標
-    // FaceMesh 中 132 與 361 分別是影像中左右臉部輪廓線最靠近耳垂的點，比 177/401 更準確貼合邊緣
-    leftEarlobe = [face.keypoints[132].x, face.keypoints[132].y];
-    rightEarlobe = [face.keypoints[361].x, face.keypoints[361].y];
+  if (noCamera) {
+    fill(80);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text(errorMsg, width / 2, height / 2);
+    return;
+  }
 
-    if (leftEarlobe && rightEarlobe) {
-      // 計算在畫布上的實際座標（考量到影像已經左右顛倒與 50% 縮放比例）
-      let leftX = drawX + drawW - (leftEarlobe[0] / vw) * drawW;
-      let leftY = drawY + (leftEarlobe[1] / vh) * drawH;
-      
-      let rightX = drawX + drawW - (rightEarlobe[0] / vw) * drawW;
-      let rightY = drawY + (rightEarlobe[1] / vh) * drawH;
-      
-      // 在耳垂位置畫出三個黃色圓圈
-      drawThreeCircles(leftX, leftY);
-      drawThreeCircles(rightX, rightY);
+  if (!video) return;
+
+  // 使用實際影像解析度做座標映射
+  let vw = video.elt.videoWidth || video.width;
+  let vh = video.elt.videoHeight || video.height;
+
+  push();
+  translate(width / 2, height / 2);
+  scale(-1, 1);
+  imageMode(CENTER);
+  image(video, 0, 0, width * 0.5, height * 0.5);
+
+  if (faces.length > 0 && vw > 0) {
+    // 177 右耳垂，401 左耳垂（MediaPipe FaceMesh 標準索引）
+    let earlobes = [faces[0].keypoints[177], faces[0].keypoints[401]];
+
+    fill(255, 255, 0);
+    noStroke();
+
+    for (let ear of earlobes) {
+      if (!ear) continue;
+
+      let x = map(ear.x, 0, vw, -width * 0.25, width * 0.25);
+      let y = map(ear.y, 0, vh, -height * 0.25, height * 0.25);
+
+      for (let i = 1; i <= 3; i++) {
+        circle(x, y + i * 15, 10);
+      }
     }
   }
-}
+  pop();
 
-function drawThreeCircles(x, y) {
-  fill(255, 255, 0); // 黃色
+  fill(0);
   noStroke();
-  let d = 12; // 圓圈直徑
-  let spacing = 15; // 圓圈垂直間距
-  
-  // 由耳垂位置往下顯示三個圓圈，類似一個耳環樣子
-  for (let j = 0; j < 3; j++) {
-    circle(x, y + j * spacing, d);
-  }
+  textAlign(CENTER, TOP);
+  textSize(32);
+  text("414730498 許銘緯", width / 2, 30);
+  textSize(24);
+  text("作品為影像辨識_耳環臉譜", width / 2, 70);
 }
 
 function windowResized() {
-  // 確保視窗大小改變時，畫布大小也會跟著調整
   resizeCanvas(windowWidth, windowHeight);
 }
+
