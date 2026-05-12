@@ -2,6 +2,11 @@ let video;
 let facemesh;
 let predictions = [];
 
+function preload() {
+  // 建議將模型載入放在 preload 中，確保模型完全載入後再執行 setup
+  facemesh = ml5.faceMesh({ maxFaces: 1 });
+}
+
 function setup() {
   // 第一步驟：產生一個全螢幕的畫布
   createCanvas(windowWidth, windowHeight);
@@ -11,8 +16,7 @@ function setup() {
   video.size(640, 480);
   video.hide(); // 隱藏原始的 HTML 影片元素
   
-  // 初始化最新版 ml5.js FaceMesh 模型
-  facemesh = ml5.faceMesh({ maxFaces: 1 });
+  // 開始辨識
   facemesh.detectStart(video, results => {
     predictions = results;
   });
@@ -59,9 +63,10 @@ function drawEarrings(drawX, drawY, drawW, drawH) {
     let face = predictions[i];
     let leftEarlobe, rightEarlobe;
     
-    // 取得左右耳垂座標，177 與 401 分別對應 FaceMesh 的左右耳垂索引（適用於最新版 ml5.js）
-    leftEarlobe = [face.keypoints[177].x, face.keypoints[177].y];
-    rightEarlobe = [face.keypoints[401].x, face.keypoints[401].y];
+    // 取得左右耳垂座標
+    // FaceMesh 中 132 與 361 分別是影像中左右臉部輪廓線最靠近耳垂的點，比 177/401 更準確貼合邊緣
+    leftEarlobe = [face.keypoints[132].x, face.keypoints[132].y];
+    rightEarlobe = [face.keypoints[361].x, face.keypoints[361].y];
 
     if (leftEarlobe && rightEarlobe) {
       // 計算在畫布上的實際座標（考量到影像已經左右顛倒與 50% 縮放比例）
