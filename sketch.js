@@ -1,51 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Sketch</title>
-    <link rel="icon" href="data:,">
-
-    <link rel="stylesheet" type="text/css" href="style.css">
-
-    <script src="libraries/p5.min.js"></script>
-<script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
-  </head>
-
-  <body>
-    <script src="sketch.js"></script>
-  </body>
-</html>
-
-
-
-
-
-
 let video;
 let noCamera = false;
 let errorMsg = '';
 let faceMesh;
 let faces = [];
 
+function preload() {
+  // 推薦在 preload 中預先載入 ml5 v1.0 的模型
+  faceMesh = ml5.faceMesh({ maxFaces: 1 });
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
-  // 指定前鏡頭（手機預設可能是後鏡頭）
-  video = createCapture({ video: { facingMode: 'user' } }, onVideoReady);
+  // 指定前鏡頭並明確設定 audio: false
+  // 避免在沒有麥克風的裝置上導致 createCapture 失敗，使畫面無法顯示
+  let constraints = { audio: false, video: { facingMode: 'user' } };
+  video = createCapture(constraints, () => {
+    // video 準備好之後開始偵測
+    faceMesh.detectStart(video, gotFaces);
+  });
+
   video.elt.addEventListener('error', () => {
     noCamera = true;
     errorMsg = '無法開啟攝影機';
   });
   video.hide();
-}
-
-function onVideoReady() {
-  // video 準備好之後再初始化 faceMesh
-  faceMesh = ml5.faceMesh({ maxFaces: 1 }, () => {
-    faceMesh.detectStart(video, gotFaces);
-  });
 }
 
 function gotFaces(results) {
@@ -64,11 +43,18 @@ function draw() {
     return;
   }
 
-  if (!video) return;
+  // 確保 video 已經載入且有影像尺寸，避免讀取到 0 造成畫面異常
+  if (!video || video.elt.videoWidth === 0) {
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text("載入中...", width / 2, height / 2);
+    return;
+  }
 
   // 使用實際影像解析度做座標映射
-  let vw = video.elt.videoWidth || video.width;
-  let vh = video.elt.videoHeight || video.height;
+  let vw = video.elt.videoWidth;
+  let vh = video.elt.videoHeight;
 
   push();
   translate(width / 2, height / 2);
@@ -100,7 +86,7 @@ function draw() {
   noStroke();
   textAlign(CENTER, TOP);
   textSize(32);
-  text("414730498 許銘緯", width / 2, 30);
+  text("414730936 陸柏安", width / 2, 30);
   textSize(24);
   text("作品為影像辨識_耳環臉譜", width / 2, 70);
 }
@@ -108,4 +94,3 @@ function draw() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
-
